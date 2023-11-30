@@ -1,0 +1,28 @@
+name: CI/CD
+on:
+  push:
+    branches: [  feature/k8s, dev ]
+  pull_request:
+    branches: [  feature/k8s, dev ]
+
+env:
+  ACTIONS_ALLOW_UNSECURE_COMMANDS: true
+  SERVICE_NAME: whoami
+  IMAGE_REGISTRY: 607709576948.dkr.ecr.eu-west-2.amazonaws.com/mydemo/whoami  
+  DOCKERFILE_LOCATION: ./
+  API_TOKEN_GITHUB: ${{ secrets.API_TOKEN_GITHUB }}
+  GITHUB_EVENT_NAME: ${{ github.event_name }}
+  GITHUB_BRANCH_NAME: ${GITHUB_REF#refs/heads/}
+  PR_NUMBER: ${{ github.event.number }}
+
+jobs:
+
+  build:
+    name: test-runner
+    runs-on: self-hosted
+    steps:
+      - uses: actions/checkout@v4
+      
+      - name: test
+        run: |
+          echo "${{ env.GITHUB_BRANCH_NAME }} defult branch"
