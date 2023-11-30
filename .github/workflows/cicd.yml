@@ -60,12 +60,11 @@ jobs:
         id: tag-image
         uses: docker/metadata-action@v4
         with:
-          images: ${{ env.IMAGE_REGISTRY }}/${{ env.SERVICE_NAME}}
+          images: ${{ env.IMAGE_REGISTRY }}
           tags: ${{ steps.extract_params.outputs.branch_name }}-${{ steps.extract_params.outputs.short_sha }}
 
       - name: Push Image To Registry
         id: push-to-registry
         run: |
           docker tag ${{ env.SERVICE_NAME}} "${{ steps.tag-image.outputs.tags }}"
-          ##docker login "${{ env.IMAGE_REGISTRY }}" -u "${{ env.REGISTRY_USER }}" -p "${{ secrets.ART_PASSWORD }}"
-          #docker push "${{ steps.tag-image.outputs.tags }}"
+          docker push "${{ steps.tag-image.outputs.tags }}"
