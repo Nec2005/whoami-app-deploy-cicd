@@ -60,4 +60,26 @@ jobs:
           docker tag ${{ env.SERVICE_NAME}} "${{ steps.tag-image.outputs.tags }}"
           docker push "${{ steps.tag-image.outputs.tags }}"
 
-          
+########################################
+
+  container-security:
+    name: Container Image Security
+    runs-on: self-hosted
+    needs: [ build ]
+    steps:
+
+      - name: Scan Container Image Vulnerabilities
+        uses: crazy-max/ghaction-container-scan@v3
+        id: container-security
+        with:
+          image: "${{ env.IMAGE_REGISTRY }}:${{ needs.build.outputs.branch_name }}-${{ needs.build.outputs.short_sha }}"
+          dockerfile: ./Dockerfile
+          severity_threshold: CRITICAL
+
+      - name: Show the files
+        shell: bash
+        run: |
+          pwd && ls -l
+          echo ${{ steps.container-security.outputs.sarif }}
+
+      
