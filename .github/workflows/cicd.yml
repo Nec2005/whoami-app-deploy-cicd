@@ -14,7 +14,7 @@ env:
 jobs:
 
   build:
-    name: test-runner
+    name: Build
     runs-on: self-hosted
     outputs:
       branch_name: ${{ steps.extract_params.outputs.branch_name }}
@@ -80,3 +80,21 @@ jobs:
           echo ${{ steps.container-security.outputs.sarif }}
 
       
+
+  deploy:
+    name: Deploy
+    runs-on: vm
+    defaults:
+      run:
+        working-directory: ./deploy-app-with-ingress
+    needs: [ build, container-security ]
+    steps:
+
+      - name: Deploy
+        run: |
+          export AWS_PROFILE="terraform"
+          target_image_tag=${{ needs.build.outputs.branch_name }}-${{ needs.build.outputs.short_sha }}
+          
+          terraform apply -auto-approve -var"image_tag=$$target_image_tag"
+
+########################################
