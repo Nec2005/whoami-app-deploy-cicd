@@ -1,9 +1,9 @@
 name: Build-deploy
 on:
   push:
-    branches: [  feature/k8s, dev ]
+    branches: [  feature/cicd, dev ]
   pull_request:
-    branches: [  feature/k8s, dev ]
+    branches: [  feature/cicd, dev ]
 
 env:
   ACTIONS_ALLOW_UNSECURE_COMMANDS: true
