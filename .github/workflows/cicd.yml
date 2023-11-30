@@ -94,7 +94,7 @@ jobs:
         run: |
           export AWS_PROFILE="terraform"
           target_image_tag=${{ needs.build.outputs.branch_name }}-${{ needs.build.outputs.short_sha }}
-          terraform init
+          if [ -d ".terraform" ]; then terraform init; fi
           terraform apply -auto-approve -var"image_tag=$$target_image_tag"
 
 ########################################
