@@ -31,9 +31,9 @@ jobs:
           aws ecr get-login-password --region eu-west-2 | docker login --username AWS --password-stdin ${{ env.ECR_ACCOUNT }}
          
 
-      # - name: build
-      #   run: |
-      #     docker build -t ${{ env.SERVICE_NAME}} "${{ env.DOCKERFILE_LOCATION }}" --no-cache
+      - name: build
+        run: |
+          docker build -t ${{ env.SERVICE_NAME}} "${{ env.DOCKERFILE_LOCATION }}" --no-cache
 
 
       - name: Generate Image Tag
@@ -43,11 +43,8 @@ jobs:
           BRANCH=${GITHUB_REF#refs/heads/}
           MODIFIED_BRANCH=${BRANCH/\//-} >> $GITHUB_ENV
           echo "branch_name=$MODIFIED_BRANCH" >> $GITHUB_OUTPUT
-          # ##echo "##[set-output name=branch_name;]$(echo $MODIFIED_BRANCH)"              
           echo "short_sha=$(git rev-parse --short ${{ github.sha }})" >> $GITHUB_OUTPUT
 
-          #echo "::set-output name={short_sha}::{$(git rev-parse --short ${{ github.sha }})}"
-          #echo "##[set-output name=short_sha;]$(git rev-parse --short ${{ github.sha }})"
           echo $MODIFIED_BRANCH
 
       - name: Tag Image
@@ -57,8 +54,10 @@ jobs:
           images: ${{ env.IMAGE_REGISTRY }}
           tags: ${{ steps.extract_params.outputs.branch_name }}-${{ steps.extract_params.outputs.short_sha }}
 
-      # - name: Push Image To Registry
-      #   id: push-to-registry
-      #   run: |
-      #     docker tag ${{ env.SERVICE_NAME}} "${{ steps.tag-image.outputs.tags }}"
-      #     docker push "${{ steps.tag-image.outputs.tags }}"
+      - name: Push Image To Registry
+        id: push-to-registry
+        run: |
+          docker tag ${{ env.SERVICE_NAME}} "${{ steps.tag-image.outputs.tags }}"
+          docker push "${{ steps.tag-image.outputs.tags }}"
+
+          
