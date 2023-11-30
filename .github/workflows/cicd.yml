@@ -10,7 +10,6 @@ env:
   ECR_ACCOUNT: 607709576948.dkr.ecr.eu-west-2.amazonaws.com  
   DOCKERFILE_LOCATION: ./
   GITHUB_BRANCH_NAME: ${GITHUB_REF#refs/heads/}
-  PR_NUMBER: ${{ github.event.number }}
 
 jobs:
 
