@@ -2,3 +2,9 @@
 vendor/
 /whoami
 dist/
+
+**/.terraform/*
+
+# .tfstate files
+*.tfstate
+*.tfstate.*
