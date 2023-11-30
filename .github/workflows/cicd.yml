@@ -42,10 +42,10 @@ jobs:
         run: |
           BRANCH=${GITHUB_REF#refs/heads/}
           MODIFIED_BRANCH=${BRANCH/\//-} >> $GITHUB_ENV
-          echo "::set-output name={branch_name}::$MODIFIED_BRANCH"
-          ##echo "##[set-output name=branch_name;]$(echo $MODIFIED_BRANCH)"              
+          echo "::set-output name={branch_name}::{$MODIFIED_BRANCH}"
+          # ##echo "##[set-output name=branch_name;]$(echo $MODIFIED_BRANCH)"              
           
-          echo "::set-output name={short_sha}::$(git rev-parse --short ${{ github.sha }})"
+          echo "::set-output name={short_sha}::{$(git rev-parse --short ${{ github.sha }})}"
           #echo "##[set-output name=short_sha;]$(git rev-parse --short ${{ github.sha }})"
           echo ${{ env.GITHUB_BRANCH_NAME }}
 
