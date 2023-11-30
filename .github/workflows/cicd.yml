@@ -1,0 +1,71 @@
+name: Build-deploy
+on:
+  push:
+    branches: [  feature/k8s, dev ]
+  pull_request:
+    branches: [  feature/k8s, dev ]
+
+env:
+  ACTIONS_ALLOW_UNSECURE_COMMANDS: true
+  SERVICE_NAME: whoami
+  IMAGE_REGISTRY: 607709576948.dkr.ecr.eu-west-2.amazonaws.com/mydemo/whoami
+  ECR_ACCOUNT: 607709576948.dkr.ecr.eu-west-2.amazonaws.com  
+  DOCKERFILE_LOCATION: ./
+  API_TOKEN_GITHUB: ${{ secrets.API_TOKEN_GITHUB }}
+  GITHUB_EVENT_NAME: ${{ github.event_name }}
+  GITHUB_BRANCH_NAME: ${GITHUB_REF#refs/heads/}
+  PR_NUMBER: ${{ github.event.number }}
+
+jobs:
+
+  build:
+    name: test-runner
+    runs-on: self-hosted
+    outputs:
+      branch_name: ${{ steps.extract_params.outputs.branch_name }}
+      short_sha: ${{ steps.extract_params.outputs.short_sha }}
+
+    steps:
+      - uses: actions/checkout@v4
+      
+      - name: login-registry
+        run: |
+          echo "${{ env.GITHUB_BRANCH_NAME }} defult branch"
+          aws s3 ls
+          aws ecr get-login-password --region eu-west-2 | docker login --username AWS --password-stdin ${{ env.ECR_ACCOUNT }}
+         
+
+      - name: build
+        run: |
+          docker build -t ${{ env.SERVICE_NAME}} "${{ env.DOCKERFILE_LOCATION }}" --no-cache
+
+
+      - name: Generate Image Tag
+        id: extract_params
+        shell: bash
+        run: |
+          echo "${{ env.GITHUB_BRANCH_NAME }} | ${{ env.PR_NUMBER }}"
+          if [ "${{ github.event_name }}" = "push" ]; then
+              BRANCH=${GITHUB_REF#refs/heads/}
+              MODIFIED_BRANCH=${BRANCH/\//-} >> $GITHUB_ENV
+              echo "##[set-output name=branch_name;]$(echo $MODIFIED_BRANCH)"              
+          elif [ "${{ github.event_name }}" = "pull_request" ]; then
+              echo "##[set-output name=branch_name;]$(echo PR${{ github.event.number }})"
+          fi
+          # echo "##[set-output name=branch_name;]$(echo $MODIFIED_BRANCH)"
+          echo "##[set-output name=short_sha;]$(git rev-parse --short ${{ github.sha }})"
+          echo ${{ env.GITHUB_BRANCH_NAME }}
+
+      - name: Tag Image
+        id: tag-image
+        uses: docker/metadata-action@v4
+        with:
+          images: ${{ env.IMAGE_REGISTRY }}/${{ env.SERVICE_NAME}}
+          tags: ${{ steps.extract_params.outputs.branch_name }}-${{ steps.extract_params.outputs.short_sha }}
+
+      - name: Push Image To Registry
+        id: push-to-registry
+        run: |
+          docker tag ${{ env.SERVICE_NAME}} "${{ steps.tag-image.outputs.tags }}"
+          ##docker login "${{ env.IMAGE_REGISTRY }}" -u "${{ env.REGISTRY_USER }}" -p "${{ secrets.ART_PASSWORD }}"
+          #docker push "${{ steps.tag-image.outputs.tags }}"
