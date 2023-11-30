@@ -44,18 +44,6 @@ resource "kubernetes_ingress_v1" "ingress" {
           path_type = "Prefix"
         }
 
-        path {
-          backend {
-            service {
-              name = kubernetes_service_v1.myapp2_np_service.metadata[0].name
-              port {
-                number = 80
-              }
-            }
-          }
-          path = "/app2"
-          path_type = "Prefix"
-        }
       }
     }
   }

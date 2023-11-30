@@ -3,7 +3,7 @@ resource "kubernetes_service_v1" "myapp_np_service" {
   metadata {
     name = "whoami-nodeport-service"
     annotations = {
-      "alb.ingress.kubernetes.io/healthcheck-path" = "/health"
+      "alb.ingress.kubernetes.io/healthcheck-path" = "/api"
     }    
   }
   spec {
