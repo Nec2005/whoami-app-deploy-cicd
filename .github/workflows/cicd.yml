@@ -42,13 +42,13 @@ jobs:
         run: |
           BRANCH=${GITHUB_REF#refs/heads/}
           MODIFIED_BRANCH=${BRANCH/\//-} >> $GITHUB_ENV
-          echo "{branch_name}={$MODIFIED_BRANCH}" >> $GITHUB_OUTPUT
+          echo "branch_name=$MODIFIED_BRANCH" >> $GITHUB_OUTPUT
           # ##echo "##[set-output name=branch_name;]$(echo $MODIFIED_BRANCH)"              
-          echo "{short_sha}=$(git rev-parse --short ${{ github.sha }})" >> $GITHUB_OUTPUT
+          echo "short_sha=$(git rev-parse --short ${{ github.sha }})" >> $GITHUB_OUTPUT
 
           #echo "::set-output name={short_sha}::{$(git rev-parse --short ${{ github.sha }})}"
           #echo "##[set-output name=short_sha;]$(git rev-parse --short ${{ github.sha }})"
-          echo ${{ env.MODIFIED_BRANCH }}
+          echo $MODIFIED_BRANCH
 
       - name: Tag Image
         id: tag-image
