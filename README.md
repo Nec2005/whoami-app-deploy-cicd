@@ -1,113 +1,128 @@
-# whoami
+# whoami app build and deploy with image-security-scan GitHUb Action 
 
-[![Docker Pulls](https://img.shields.io/docker/pulls/traefik/whoami.svg)](https://hub.docker.com/r/traefik/whoami/)
-[![Build Status](https://github.com/traefik/whoami/workflows/Main/badge.svg?branch=master)](https://github.com/traefik/whoami/actions)
+Firstly, prepare your runer to run cicd action file.
 
-Tiny Go webserver that prints OS information and HTTP request to output.
+https://docs.github.com/en/actions/hosting-your-own-runners/managing-self-hosted-runners/adding-self-hosted-runners
+
+
 
 ## Usage
 
-### Paths
-
-#### `/[?wait=d]`
-
-Returns the whoami information (request and network information).
-
-The optional `wait` query parameter can be provided to tell the server to wait before sending the response.
-The duration is expected in Go's [`time.Duration`](https://golang.org/pkg/time/#ParseDuration) format (e.g. `/?wait=100ms` to wait 100 milliseconds).
-
-The optional `env` query parameter can be set to `true` to add the environment variables to the response.
-
-#### `/api`
-
-Returns the whoami information as JSON.
-
-The optional `env` query parameter can be set to `true` to add the environment variables to the response.
-
-#### `/bench`
-
-Always return the same response (`1`).
-
-#### `/data?size=n[&unit=u]`
-
-Creates a response with a size `n`.
-
-The unit of measure, if specified, accepts the following values: `KB`, `MB`, `GB`, `TB` (optional, default: bytes).
-
-#### `/echo`
-
-WebSocket echo.
-
-#### `/health`
-
-Heath check.
-
-- `GET`, `HEAD`, ...: returns a response with the status code defined by the `POST`
-- `POST`: changes the status code of the `GET` (`HEAD`, ...) response.
-
-### Flags
-
-| Flag      | Env var              | Description                             |
-|-----------|----------------------|-----------------------------------------|
-| `cert`    |                      | Give me a certificate.                  |
-| `key`     |                      | Give me a key.                          |
-| `cacert`  |                      | Give me a CA chain, enforces mutual TLS |
-| `port`    | `WHOAMI_PORT_NUMBER` | Give me a port number. (default: `80`)  |
-| `name`    | `WHOAMI_NAME`        | Give me a name.                         |
-| `verbose` |                      | Enable verbose logging.                 |
-
-## Examples
+Change the variables in tfvars file
 
 ```console
-$ docker run -d -P --name iamfoo traefik/whoami
+# Generic Variables
+image_tag = "feature-cicd-b991193"
+service_dns_prefix = "whoami-dev"
+image_registry = "607709576948.dkr.ecr.eu-west-2.amazonaws.com/mydemo/whoami
 
-$ docker inspect --format '{{ .NetworkSettings.Ports }}'  iamfoo
-map[80/tcp:[{0.0.0.0 32769}]]
-
-$ curl "http://0.0.0.0:32769"
-Hostname :  6e0030e67d6a
-IP :  127.0.0.1
-IP :  ::1
-IP :  172.17.0.27
-IP :  fe80::42:acff:fe11:1b
-GET / HTTP/1.1
-Host: 0.0.0.0:32769
-User-Agent: curl/7.35.0
-Accept: */*
 ```
 
-```console
-# updates health check status
-$ curl -X POST -d '500' http://localhost:80/health
 
-# calls the health check
-$ curl -v http://localhost:80/health
-*   Trying ::1:80...
-* TCP_NODELAY set
-* Connected to localhost (::1) port 80 (#0)
-> GET /health HTTP/1.1
-> Host: localhost:80
-> User-Agent: curl/7.65.3
-> Accept: */*
-> 
-* Mark bundle as not supporting multiuse
-< HTTP/1.1 500 Internal Server Error
-< Date: Mon, 16 Sep 2019 22:52:40 GMT
-< Content-Length: 0
-```
 
-```console
-docker run -d -P -v ./certs:/certs --name iamfoo traefik/whoami --cert /certs/example.cert --key /certs/example.key
-```
+
+#### `When you push the new code to the repository, image tag automatically will update and deploy with new image`
+
 
 ```yml
-version: '3.9'
+name: Build-deploy
+on:
+  push:
+    branches: [  feature/cicd, dev ]
 
-services:
-  whoami:
-    image: traefik/whoami
-    command:
-       # It tells whoami to start listening on 2001 instead of 80
-       - --port=2001
-       - --name=iamfoo
+env:
+  ACTIONS_ALLOW_UNSECURE_COMMANDS: true
+  SERVICE_NAME: whoami
+  IMAGE_REGISTRY: 607709576948.dkr.ecr.eu-west-2.amazonaws.com/mydemo/whoami
+  ECR_ACCOUNT: 607709576948.dkr.ecr.eu-west-2.amazonaws.com  
+  DOCKERFILE_LOCATION: ./
+  GITHUB_BRANCH_NAME: ${GITHUB_REF#refs/heads/}
+
+jobs:
+
+  build:
+    name: Build
+    runs-on: self-hosted
+    outputs:
+      branch_name: ${{ steps.extract_params.outputs.branch_name }}
+      short_sha: ${{ steps.extract_params.outputs.short_sha }}
+
+    steps:
+      - uses: actions/checkout@v4
+      
+      - name: login-registry
+        run: |
+          aws ecr get-login-password --region eu-west-2 | docker login --username AWS --password-stdin ${{ env.ECR_ACCOUNT }}
+         
+
+      - name: build
+        run: |
+          docker build -t ${{ env.SERVICE_NAME}} "${{ env.DOCKERFILE_LOCATION }}" --no-cache
+
+
+      - name: Generate Image Tag
+        id: extract_params
+        shell: bash
+        run: |
+          BRANCH=${GITHUB_REF#refs/heads/}
+          MODIFIED_BRANCH=${BRANCH/\//-} >> $GITHUB_ENV
+          echo "branch_name=$MODIFIED_BRANCH" >> $GITHUB_OUTPUT
+          echo "short_sha=$(git rev-parse --short ${{ github.sha }})" >> $GITHUB_OUTPUT
+
+          echo $MODIFIED_BRANCH
+
+      - name: Tag Image
+        id: tag-image
+        uses: docker/metadata-action@v4
+        with:
+          images: ${{ env.IMAGE_REGISTRY }}
+          tags: ${{ steps.extract_params.outputs.branch_name }}-${{ steps.extract_params.outputs.short_sha }}
+
+      - name: Push Image To Registry
+        id: push-to-registry
+        run: |
+          docker tag ${{ env.SERVICE_NAME}} "${{ steps.tag-image.outputs.tags }}"
+          docker push "${{ steps.tag-image.outputs.tags }}"
+
+########################################
+
+  container-security:
+    name: Container Image Security
+    runs-on: self-hosted
+    needs: [ build ]
+    steps:
+
+      - name: Scan Container Image Vulnerabilities
+        uses: crazy-max/ghaction-container-scan@v3
+        id: container-security
+        with:
+          image: "${{ env.IMAGE_REGISTRY }}:${{ needs.build.outputs.branch_name }}-${{ needs.build.outputs.short_sha }}"
+          dockerfile: ./Dockerfile
+          severity_threshold: CRITICAL
+
+      - name: Show the files
+        shell: bash
+        run: |
+          pwd && ls -l
+          echo ${{ steps.container-security.outputs.sarif }}
+      
+
+  deploy:
+    name: Deploy
+    runs-on: self-hosted
+    defaults:
+      run:
+        working-directory: ./deploy-app-with-ingress
+    needs: [ build, container-security ]
+    steps:
+
+      - name: Deploy
+        run: |
+          export AWS_PROFILE="terraform"
+          target_image_tag=${{ needs.build.outputs.branch_name }}-${{ needs.build.outputs.short_sha }}
+          [ -d ".terraform" ] || terraform init
+          terraform apply -auto-approve -var "image_tag=$target_image_tag"
+
+########################################
+
 ```

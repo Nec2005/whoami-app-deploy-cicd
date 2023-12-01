@@ -1,7 +1,7 @@
 
 resource "kubernetes_ingress_v1" "ingress" {
   metadata {
-    name = "ingress-certdiscoverytls-demo"
+    name = "ingress-myapp-demo"
     annotations = {
       # Load Balancer Name
       "alb.ingress.kubernetes.io/load-balancer-name" = "certdiscoverytls-ingress"
