@@ -1,0 +1,100 @@
+name: Build-deploy
+on:
+  push:
+    branches: [  feature/cicd, dev ]
+
+env:
+  ACTIONS_ALLOW_UNSECURE_COMMANDS: true
+  SERVICE_NAME: whoami
+  IMAGE_REGISTRY: <ECR-IMAGE-REPO>
+  ECR_ACCOUNT: <AWS_ACCOUNT>.dkr.ecr.eu-west-2.amazonaws.com  
+  DOCKERFILE_LOCATION: ./
+  GITHUB_BRANCH_NAME: ${GITHUB_REF#refs/heads/}
+
+jobs:
+
+  build:
+    name: Build
+    runs-on: self-hosted
+    outputs:
+      branch_name: ${{ steps.extract_params.outputs.branch_name }}
+      short_sha: ${{ steps.extract_params.outputs.short_sha }}
+
+    steps:
+      - uses: actions/checkout@v4
+      
+      - name: login-registry
+        run: |
+          aws ecr get-login-password --region eu-west-2 | docker login --username AWS --password-stdin ${{ env.ECR_ACCOUNT }}
+         
+
+      - name: build
+        run: |
+          docker build -t ${{ env.SERVICE_NAME}} "${{ env.DOCKERFILE_LOCATION }}" --no-cache
+
+
+      - name: Generate Image Tag
+        id: extract_params
+        shell: bash
+        run: |
+          BRANCH=${GITHUB_REF#refs/heads/}
+          MODIFIED_BRANCH=${BRANCH/\//-} >> $GITHUB_ENV
+          echo "branch_name=$MODIFIED_BRANCH" >> $GITHUB_OUTPUT
+          echo "short_sha=$(git rev-parse --short ${{ github.sha }})" >> $GITHUB_OUTPUT
+
+          echo $MODIFIED_BRANCH
+
+      - name: Tag Image
+        id: tag-image
+        uses: docker/metadata-action@v4
+        with:
+          images: ${{ env.IMAGE_REGISTRY }}
+          tags: ${{ steps.extract_params.outputs.branch_name }}-${{ steps.extract_params.outputs.short_sha }}
+
+      - name: Push Image To Registry
+        id: push-to-registry
+        run: |
+          docker tag ${{ env.SERVICE_NAME}} "${{ steps.tag-image.outputs.tags }}"
+          docker push "${{ steps.tag-image.outputs.tags }}"
+
+########################################
+
+  container-security:
+    name: Container Image Security
+    runs-on: self-hosted
+    needs: [ build ]
+    steps:
+
+      - name: Scan Container Image Vulnerabilities
+        uses: crazy-max/ghaction-container-scan@v3
+        id: container-security
+        with:
+          image: "${{ env.IMAGE_REGISTRY }}:${{ needs.build.outputs.branch_name }}-${{ needs.build.outputs.short_sha }}"
+          dockerfile: ./Dockerfile
+          severity_threshold: CRITICAL
+
+      - name: Show the files
+        shell: bash
+        run: |
+          pwd && ls -l
+          echo ${{ steps.container-security.outputs.sarif }}
+
+      
+
+  deploy:
+    name: Deploy
+    runs-on: self-hosted
+    defaults:
+      run:
+        working-directory: ./deploy-app-with-ingress
+    needs: [ build, container-security ]
+    steps:
+
+      - name: Deploy
+        run: |
+          export AWS_PROFILE="terraform"
+          target_image_tag=${{ needs.build.outputs.branch_name }}-${{ needs.build.outputs.short_sha }}
+          [ -d ".terraform" ] || terraform init
+          terraform apply -auto-approve -var "image_tag=$target_image_tag"
+
+########################################
