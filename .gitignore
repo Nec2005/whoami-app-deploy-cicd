@@ -10,3 +10,19 @@ dist/
 *.tfstate.*
 .drawio
 *.terraform*
+
+**/.terraform/*
+
+# .tfstate files
+*.tfstate
+*.tfstate.*
+.drawio
+*.terraform*
+
+**/.terraform/*
+
+# .tfstate files
+*.tfstate
+*.tfstate.*
+.drawio
+*.terraform*
