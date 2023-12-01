@@ -9,4 +9,4 @@ dist/
 *.tfstate
 *.tfstate.*
 .drawio
-*.terraform*
+.terraform.lock.hcl
