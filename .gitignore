@@ -8,9 +8,5 @@ dist/
 # .tfstate files
 *.tfstate
 *.tfstate.*
-<<<<<<< HEAD
 .drawio
 *.terraform*
-=======
-*.terrafor*
->>>>>>> feature/cicd
