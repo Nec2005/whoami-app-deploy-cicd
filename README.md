@@ -21,7 +21,10 @@ If you want to use ingress for your application, run terraform commands in the 0
 connect to cluster to check the node
 
 ```console
+$ export AWS_PROFILE = "terraform"
+
 $ aws eks --region eu-west-2 update-kubeconfig --name pharm-dev-demo1
 
 ```
-
+## EKS Cluster with DNS
+![EKS-infra?](./eks-infra.png)
