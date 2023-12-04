@@ -4,7 +4,7 @@ resource "kubernetes_ingress_v1" "ingress" {
     name = "ingress-myapp-demo"
     annotations = {
       # Load Balancer Name
-      "alb.ingress.kubernetes.io/load-balancer-name" = "certdiscoverytls-ingress"
+      "alb.ingress.kubernetes.io/load-balancer-name" = "whoami-app-ingress"
       # Ingress Core Settings
       "alb.ingress.kubernetes.io/scheme" = "internet-facing"
       # Health Check Settings
