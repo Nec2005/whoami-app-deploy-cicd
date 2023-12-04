@@ -8,7 +8,7 @@ on:
 env:
   ACTIONS_ALLOW_UNSECURE_COMMANDS: true
   SERVICE_NAME: whoami
-  IMAGE_REGISTRY: 607709576948.dkr.ecr.eu-west-2.amazonaws.com/mydemo/whoami  
+  IMAGE_REGISTRY: ${{ secrets.IMAGE_REPO }}  
   DOCKERFILE_LOCATION: ./
   API_TOKEN_GITHUB: ${{ secrets.API_TOKEN_GITHUB }}
   GITHUB_EVENT_NAME: ${{ github.event_name }}
@@ -25,4 +25,4 @@ jobs:
       
       - name: test
         run: |
-          echo "${{ env.GITHUB_BRANCH_NAME }} defult branch"
+          echo "${{ env.GITHUB_BRANCH_NAME }} default branch"
