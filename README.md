@@ -33,8 +33,6 @@ on:
 env:
   ACTIONS_ALLOW_UNSECURE_COMMANDS: true
   SERVICE_NAME: whoami
-  IMAGE_REGISTRY: 607709576948.dkr.ecr.eu-west-2.amazonaws.com/mydemo/whoami
-  ECR_ACCOUNT: 607709576948.dkr.ecr.eu-west-2.amazonaws.com  
   DOCKERFILE_LOCATION: ./
   GITHUB_BRANCH_NAME: ${GITHUB_REF#refs/heads/}
 
@@ -52,7 +50,7 @@ jobs:
       
       - name: login-registry
         run: |
-          aws ecr get-login-password --region eu-west-2 | docker login --username AWS --password-stdin ${{ env.ECR_ACCOUNT }}
+          aws ecr get-login-password --region eu-west-2 | docker login --username AWS --password-stdin ${{ secrets.ECR_ACCOUNT }}
          
 
       - name: build
@@ -75,7 +73,7 @@ jobs:
         id: tag-image
         uses: docker/metadata-action@v4
         with:
-          images: ${{ env.IMAGE_REGISTRY }}
+          images: ${{ secrets.IMAGE_REPO }}
           tags: ${{ steps.extract_params.outputs.branch_name }}-${{ steps.extract_params.outputs.short_sha }}
 
       - name: Push Image To Registry
@@ -96,7 +94,7 @@ jobs:
         uses: crazy-max/ghaction-container-scan@v3
         id: container-security
         with:
-          image: "${{ env.IMAGE_REGISTRY }}:${{ needs.build.outputs.branch_name }}-${{ needs.build.outputs.short_sha }}"
+          image: "${{ secrets.IMAGE_REPO }}:${{ needs.build.outputs.branch_name }}-${{ needs.build.outputs.short_sha }}"
           dockerfile: ./Dockerfile
           severity_threshold: CRITICAL
 
@@ -104,9 +102,9 @@ jobs:
         shell: bash
         run: |
           pwd && ls -l
-          echo ${{ steps.container-security.outputs.sarif }}
-      
+          echo ${{ steps.container-security.outputs.sarif }}   
 
+########################################
   deploy:
     name: Deploy
     runs-on: self-hosted
@@ -121,8 +119,10 @@ jobs:
           export AWS_PROFILE="terraform"
           target_image_tag=${{ needs.build.outputs.branch_name }}-${{ needs.build.outputs.short_sha }}
           [ -d ".terraform" ] || terraform init
-          terraform apply -auto-approve -var "image_tag=$target_image_tag"
+          export TF_VAR_image_registry=${{ secrets.IMAGE_REPO }}
+          terraform apply -auto-approve -var "image_tag=$target_image_tag" 
 
 ########################################
+
 
 ```
