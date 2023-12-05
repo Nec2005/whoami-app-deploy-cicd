@@ -75,10 +75,9 @@ jobs:
         shell: bash
         run: |
           pwd && ls -l
-          echo ${{ steps.container-security.outputs.sarif }}
+          echo ${{ steps.container-security.outputs.sarif }}   
 
-      
-
+########################################
   deploy:
     name: Deploy
     runs-on: self-hosted
