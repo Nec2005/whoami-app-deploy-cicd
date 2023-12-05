@@ -6,8 +6,6 @@ on:
 env:
   ACTIONS_ALLOW_UNSECURE_COMMANDS: true
   SERVICE_NAME: whoami
-  IMAGE_REGISTRY: <ECR-IMAGE-REPO>
-  ECR_ACCOUNT: <AWS_ACCOUNT>.dkr.ecr.eu-west-2.amazonaws.com  
   DOCKERFILE_LOCATION: ./
   GITHUB_BRANCH_NAME: ${GITHUB_REF#refs/heads/}
 
@@ -22,11 +20,11 @@ jobs:
 
     steps:
       - uses: actions/checkout@v4
-      
+
       - name: login-registry
         run: |
-          aws ecr get-login-password --region eu-west-2 | docker login --username AWS --password-stdin ${{ env.ECR_ACCOUNT }}
-         
+          aws ecr get-login-password --region eu-west-2 | docker login --username AWS --password-stdin ${{ secrets.ECR_ACCOUNT }}
+
 
       - name: build
         run: |
@@ -48,7 +46,7 @@ jobs:
         id: tag-image
         uses: docker/metadata-action@v4
         with:
-          images: ${{ env.IMAGE_REGISTRY }}
+          images: ${{ secrets.IMAGE_REPO }}
           tags: ${{ steps.extract_params.outputs.branch_name }}-${{ steps.extract_params.outputs.short_sha }}
 
       - name: Push Image To Registry
@@ -69,7 +67,7 @@ jobs:
         uses: crazy-max/ghaction-container-scan@v3
         id: container-security
         with:
-          image: "${{ env.IMAGE_REGISTRY }}:${{ needs.build.outputs.branch_name }}-${{ needs.build.outputs.short_sha }}"
+          image: "${{ secrets.IMAGE_REPO }}:${{ needs.build.outputs.branch_name }}-${{ needs.build.outputs.short_sha }}"
           dockerfile: ./Dockerfile
           severity_threshold: CRITICAL
 
@@ -79,8 +77,7 @@ jobs:
           pwd && ls -l
           echo ${{ steps.container-security.outputs.sarif }}
 
-      
-
+########################################
   deploy:
     name: Deploy
     runs-on: self-hosted
@@ -95,6 +92,5 @@ jobs:
           export AWS_PROFILE="terraform"
           target_image_tag=${{ needs.build.outputs.branch_name }}-${{ needs.build.outputs.short_sha }}
           [ -d ".terraform" ] || terraform init
+          export TF_VAR_image_registry=${{ secrets.IMAGE_REPO }}
           terraform apply -auto-approve -var "image_tag=$target_image_tag"
-
-########################################
